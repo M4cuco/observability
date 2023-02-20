@@ -1,0 +1,75 @@
+version: '3.3'
+
+services:
+  loki:
+    image: grafana/loki:latest
+    container_name: loki-lab
+    ports:
+      - 3100:3100
+    command:
+      - -config.file=/etc/loki/loki-config.yml
+      - -print-config-stderr=true
+    networks:
+      - loki
+    volumes:
+      - loki-data:/loki
+      - ./loki/loki-config.yml:/etc/loki/loki-config.yml
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail-lab
+    command:
+      - -config.file=/etc/promtail/promtail-config.yml
+    volumes:
+      - ./promtail/promtail-config.yml:/etc/promtail/promtail-config.yml
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - loki
+    ports:
+      - 9080:9080
+    depends_on:
+      - loki
+
+  grafanadb:
+      image: postgres:latest
+      container_name: grafanadb-lab
+      restart: always
+      environment:
+        POSTGRES_DB: grafana-db
+        POSTGRES_USER: grafana-user
+        POSTGRES_PASSWORD: P@ssw0rd
+      ports:
+        - 5499:5432
+      volumes:
+        - grafanadb-lab:/var/lib/postgresql/data
+      networks:
+        - loki
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana-lab
+    environment:
+      GF_DATABASE_TYPE: postgres
+      GF_DATABASE_HOST: grafanadb:5432
+      GF_DATABASE_NAME: grafana-db
+      GF_DATABASE_USER: grafana-user
+      GF_DATABASE_PASSWORD: P@ssw0rd
+      GF_DATABASE_SSL_MODE: disable
+    ports:
+      - 3000:3000
+    volumes:
+      - grafana-lab:/var/lib/grafana
+    networks:
+      - loki
+    depends_on:
+      - loki
+      - grafanadb
+
+networks:
+  loki:
+
+volumes:
+  loki-data:
+  grafanadb-lab:
+  grafana-lab:
+    
