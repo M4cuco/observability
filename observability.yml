@@ -1,112 +1,29 @@
-version: '3.3'
-
+version: "3.8"
 services:
   loki:
     image: grafana/loki:latest
     container_name: loki-lab
+    command: 
+      - --config.file=/etc/loki/local-config.yaml
     ports:
-      - 3100:3100
-    command:
-      - -config.file=/etc/loki/loki-config.yml
-      - -print-config-stderr=true
+      - 3100:3100                                  
     networks:
       - loki
-    volumes:
-      - loki-data:/loki
-      - ./loki/loki-config.yml:/etc/loki/loki-config.yml
-    logging:
-      driver: loki
-      options:
-        loki-url: http://loki:3100/loki/api/v1/push
-
-  promtail:
-    image: grafana/promtail:latest
-    container_name: promtail-lab
-    command:
-      - -config.file=/etc/promtail/promtail-config.yml
-    volumes:
-      - ./promtail/promtail-config.yml:/etc/promtail/promtail-config.yml
-      - /var/lib/docker/:/var/lib/docker:ro
-    networks:
-      - loki
-    ports:
-      - 9080:9080
-    logging:
-      driver: loki
-      options:
-        loki-url: http://loki:3100/loki/api/v1/push
-    depends_on:
-      - loki
-
+  
   grafanadb:
-      image: postgres:latest
-      container_name: grafanadb-lab
-      restart: always
-      environment:
-        POSTGRES_DB: grafana-db
-        POSTGRES_USER: grafana-user
-        POSTGRES_PASSWORD: P@ssw0rd
-      ports:
-        - 5499:5432
-      volumes:
-        - grafanadb-lab:/var/lib/postgresql/data
-      networks:
-        - loki
-
-  tempo:
-    image: grafana/tempo:latest
-    container_name: tempo-lab
-    command:
-      - --config.file=/etc/tempo.yml
-      - --target=all 
-      - --storage.trace.backend=local
-      - --storage.trace.local.path=/var/tempo
-      - --auth.enabled=false
-      - --search.enabled=true
-    volumes:
-      - ./tempo/tempo-config.yml:/etc/tempo.yml
-      - ./tempo/tempo-data:/tmp/tempo
+    image: postgres:latest
+    container_name: grafanadb-lab
+    restart: always
+    environment:
+      POSTGRES_DB: grafana-db
+      POSTGRES_USER: grafana-user
+      POSTGRES_PASSWORD: P@ssw0rd
     ports:
-      - 14268:14268  # jaeger ingest
-      - 3200:3200    # tempo
-      - 4317:4317    # otlp grpc
-      - 4318:4318    # otlp http
-    networks:
-      - loki
-    logging:
-      driver: loki
-      options:
-        loki-url: http://loki:3100/loki/api/v1/push
-
-  tempo-query:
-    image: grafana/tempo-query:latest
-    container_name: tempo-query-lab
-    command: 
-      - --grpc-storage-plugin.configuration-file=/etc/tempo-query.yml
+      - 5499:5432
     volumes:
-      - ./tempo/tempo-query-config.yml:/etc/tempo-query.yml
-    ports:
-      - 16686:16686  # jaeger-ui
+      - grafanadb-lab:/var/lib/postgresql/data
     networks:
       - loki
-    logging:
-      driver: loki
-      options:
-        loki-url: http://loki:3100/loki/api/v1/push
-
-  otel-collector:
-    image: otel/opentelemetry-collector-dev:latest
-    container_name: otel-collector-lab
-    command: 
-      - --config=/etc/otel-collector/config.yml
-    volumes:
-      - ./opentelemetry/otel-collector-config.yaml:/etc/otel-collector/config.yml
-    networks:
-      - loki
-    logging:
-      driver: loki
-      options:
-        loki-url: http://loki:3100/loki/api/v1/push
 
   grafana:
     image: grafana/grafana:latest
@@ -124,19 +41,26 @@ services:
       - grafana-lab:/var/lib/grafana
     networks:
       - loki
-    logging:
-      driver: loki
-      options:
-        loki-url: http://loki:3100/loki/api/v1/push
     depends_on:
       - loki
       - grafanadb
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail-lab
+    command:
+      - -config.file=/etc/promtail/promtail-config.yml
+    volumes:
+      - ./promtail/promtail-config.yml:/etc/promtail/promtail-config.yml
+      - /var/lib/docker/:/var/lib/docker:ro
+    depends_on:
+      - loki
+    networks:
+      - loki
 
 networks:
   loki:
 
 volumes:
-  loki-data:
   grafanadb-lab:
   grafana-lab:
-    
