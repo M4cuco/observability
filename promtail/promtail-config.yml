@@ -40,7 +40,7 @@ scrape_configs:
       source: tag
   - timestamp:
       format: RFC3339Nano
-      source: time
+      source: timestamp
   - labels:
       tag:
       stream:
